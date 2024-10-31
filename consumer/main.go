@@ -44,8 +44,13 @@ func main() {
 		},
 	}
 
-	redisClient := core.RedisClient{
+	redisClient := &core.RedisClient{
 		DSN: os.Getenv("REDIS_DSN"),
+	}
+
+	redisClient, err = redisClient.Connect()
+	if err != nil {
+		log.Fatalf("Could not connect to Redis: %v", err)
 	}
 
 	defer redisClient.Close()
@@ -72,11 +77,13 @@ func main() {
 			}
 
 			cache, err := redisClient.Get(incomingMsg.JID)
-			if err != nil {
+			if err != nil && err.Error() != "chave não encontrada" {
 				log.Printf("Error getting cache: %v", err)
 				msg.Nack(false, true)
 				continue
 			}
+
+			fmt.Println("cache", cache)
 
 			if cache != "" {
 				log.Printf("Message already sent: %v", incomingMsg)

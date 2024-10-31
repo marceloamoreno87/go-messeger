@@ -16,19 +16,23 @@ type RedisClient struct {
 }
 
 // Implementação do método Connect, aplicando o princípio de responsabilidade única.
-func (r *RedisClient) Connect() error {
+func (r *RedisClient) Connect() (*RedisClient, error) {
 	r.ctx = context.Background()
-	r.client = redis.NewClient(&redis.Options{
-		Addr: r.DSN,
-	})
+
+	options, err := redis.ParseURL(r.DSN)
+	if err != nil {
+		return nil, fmt.Errorf("erro ao analisar a URL do Redis: %w", err)
+	}
+
+	r.client = redis.NewClient(options)
 
 	// Testa a conexão com o Redis
-	_, err := r.client.Ping(r.ctx).Result()
+	_, err = r.client.Ping(r.ctx).Result()
 	if err != nil {
-		return fmt.Errorf("não foi possível conectar ao Redis: %w", err)
+		return nil, fmt.Errorf("erro ao conectar ao Redis: %w", err)
 	}
 	fmt.Println("Conectado ao Redis com sucesso")
-	return nil
+	return r, nil
 }
 
 // Implementação do método Set para armazenar dados em cache.

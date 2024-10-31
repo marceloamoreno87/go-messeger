@@ -8,14 +8,9 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-// Configuração básica do Redis
-type RedisConfig struct {
-	DSN string
-}
-
 // Estrutura para implementar o cliente Redis e manter a conexão e configuração.
 type RedisClient struct {
-	config *RedisConfig
+	DSN    string
 	client *redis.Client
 	ctx    context.Context
 }
@@ -24,7 +19,7 @@ type RedisClient struct {
 func (r *RedisClient) Connect() error {
 	r.ctx = context.Background()
 	r.client = redis.NewClient(&redis.Options{
-		Addr: r.config.DSN,
+		Addr: r.DSN,
 	})
 
 	// Testa a conexão com o Redis
@@ -41,6 +36,14 @@ func (r *RedisClient) Set(key string, value interface{}, expiration time.Duratio
 	err := r.client.Set(r.ctx, key, value, expiration).Err()
 	if err != nil {
 		return fmt.Errorf("erro ao definir valor no Redis: %w", err)
+	}
+	return nil
+}
+
+func (r *RedisClient) Del(key string) error {
+	err := r.client.Del(r.ctx, key).Err()
+	if err != nil {
+		return fmt.Errorf("erro ao deletar chave no Redis: %w", err)
 	}
 	return nil
 }

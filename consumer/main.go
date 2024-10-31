@@ -31,6 +31,12 @@ func main() {
 
 	database.RunMigrate()
 
+	client := &core.RabbitMQClient{
+		Config: &core.Config{
+			URL: os.Getenv("RABBITMQ_DSN"),
+		},
+	}
+
 	sendMessage := domain.SendMessage{
 		WhatsAppRepository: domain.WhatsAppRepository{
 			WhatsMeowDB: connWhatsMeow,
@@ -38,11 +44,11 @@ func main() {
 		},
 	}
 
-	client := &core.RabbitMQClient{
-		Config: &core.Config{
-			URL: os.Getenv("RABBITMQ_DSN"),
-		},
+	redisClient := core.RedisClient{
+		DSN: os.Getenv("REDIS_DSN"),
 	}
+
+	defer redisClient.Close()
 
 	client, err = client.Connect()
 	if err != nil {
@@ -65,13 +71,33 @@ func main() {
 				continue
 			}
 
+			cache, err := redisClient.Get(incomingMsg.JID)
+			if err != nil {
+				log.Printf("Error getting cache: %v", err)
+				msg.Nack(false, true)
+				continue
+			}
+
+			if cache != "" {
+				log.Printf("Message already sent: %v", incomingMsg)
+				msg.Nack(false, true)
+				continue
+			}
+
+			redisClient.Set(incomingMsg.JID, "true", 0)
+
 			err = sendMessage.Send(&incomingMsg)
 			if err != nil {
+				redisClient.Del(incomingMsg.JID)
 				log.Printf("Error sending message: %v", err)
 				msg.Nack(false, true)
 				continue
 			}
+
 			msg.Ack(false)
+
+			redisClient.Del(incomingMsg.JID)
+
 			fmt.Println("incomingMsg", incomingMsg)
 
 		}

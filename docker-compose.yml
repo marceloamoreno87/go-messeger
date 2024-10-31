@@ -57,7 +57,79 @@ services:
       timeout: 5s
       retries: 5
   
-  consumer:
+  consumer1:
+    build: 
+      context: .
+      target: development
+      args:
+          SERVICE_PATH: ./consumer
+    volumes:
+      - ./:/app
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      db:
+        condition: service_started
+    env_file:
+      - ./consumer/.env
+
+  consumer2:
+    build: 
+      context: .
+      target: development
+      args:
+          SERVICE_PATH: ./consumer
+    volumes:
+      - ./:/app
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      db:
+        condition: service_started
+    env_file:
+      - ./consumer/.env
+
+  consumer3:
+    build: 
+      context: .
+      target: development
+      args:
+          SERVICE_PATH: ./consumer
+    volumes:
+      - ./:/app
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      db:
+        condition: service_started
+    env_file:
+      - ./consumer/.env
+
+  consumer4:
+    build: 
+      context: .
+      target: development
+      args:
+          SERVICE_PATH: ./consumer
+    volumes:
+      - ./:/app
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      db:
+        condition: service_started
+    env_file:
+      - ./consumer/.env
+
+  consumer5:
     build: 
       context: .
       target: development

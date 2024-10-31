@@ -82,7 +82,7 @@ func (client *RabbitMQClient) Consume(queueName string) (<-chan amqp.Delivery, e
 	msgs, err := client.Ch.Consume(
 		q.Name,
 		"",
-		true,
+		false,
 		false,
 		false,
 		false,

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"gonext/core"
 	"gonext/domain"
 	"log"
@@ -64,7 +65,14 @@ func main() {
 				continue
 			}
 
-			sendMessage.Send(&incomingMsg)
+			err = sendMessage.Send(&incomingMsg)
+			if err != nil {
+				log.Printf("Error sending message: %v", err)
+				msg.Nack(false, true)
+				continue
+			}
+			msg.Ack(false)
+			fmt.Println("incomingMsg", incomingMsg)
 
 		}
 	}()

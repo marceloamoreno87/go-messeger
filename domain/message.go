@@ -2,7 +2,6 @@ package domain
 
 import (
 	"context"
-	"fmt"
 
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
@@ -30,7 +29,6 @@ func (s *SendMessage) Send(message *Message) (err error) {
 	if err != nil {
 		return err
 	}
-	fmt.Println(deviceStore)
 
 	client := whatsmeow.NewClient(deviceStore, nil)
 	if err = client.Connect(); err != nil {

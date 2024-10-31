@@ -10,6 +10,7 @@ type ValidateResponse struct {
 
 type SendRequest struct {
 	JID          string `json:"jid"`
+	To           string `json:"to"`
 	Title        string `json:"title"`
 	Service      string `json:"service"`
 	When         string `json:"when"`

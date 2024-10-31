@@ -63,6 +63,7 @@ func main() {
 				log.Printf("Error unmarshalling message: %v", err)
 				continue
 			}
+
 			sendMessage.Send(&incomingMsg)
 
 		}

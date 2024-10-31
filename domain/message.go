@@ -2,14 +2,17 @@ package domain
 
 import (
 	"context"
+	"fmt"
 
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
+	"go.mau.fi/whatsmeow/types"
 	"google.golang.org/protobuf/proto"
 )
 
 type Message struct {
 	JID          string `json:"jid"`
+	To           string `json:"to"`
 	Title        string `json:"title"`
 	Service      string `json:"service"`
 	When         string `json:"when"`
@@ -36,17 +39,24 @@ type SendMessage struct {
 func (s *SendMessage) Send(message *Message) (err error) {
 	JID := NumberToJID(message.JID)
 	deviceStore, err := s.WhatsAppRepository.FindDeviceWM(context.Background(), JID)
-	if err != nil || deviceStore == nil {
+	if err != nil {
 		return err
 	}
+	fmt.Println(deviceStore)
 
 	client := whatsmeow.NewClient(deviceStore, nil)
 	if err = client.Connect(); err != nil {
 		return err
 	}
+
+	TO := types.JID{
+		Server: "s.whatsapp.net",
+		User:   message.To,
+	}
+
 	_, err = client.SendMessage(
 		context.Background(),
-		JID,
+		TO,
 		&waProto.Message{
 			Conversation: proto.String(message.GetMessage()),
 		})

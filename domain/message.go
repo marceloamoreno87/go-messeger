@@ -19,7 +19,6 @@ type Message struct {
 	Footer       string `json:"footer"`
 }
 
-// GetMessage returns the message
 func (m *Message) GetMessage() string {
 	return m.Title + "\n" +
 		"Serviço: " + m.Service + "\n" +
@@ -37,7 +36,7 @@ type SendMessage struct {
 func (s *SendMessage) Send(message *Message) (err error) {
 	JID := NumberToJID(message.JID)
 	deviceStore, err := s.WhatsAppRepository.FindDeviceWM(context.Background(), JID)
-	if err != nil {
+	if err != nil || deviceStore == nil {
 		return err
 	}
 

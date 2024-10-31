@@ -2,6 +2,8 @@ package domain
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"gonext/core"
 	"log"
 	"os"
@@ -32,7 +34,8 @@ func (s WhatsAppService) Connect(ctx context.Context) ([]byte, error) {
 	go func() {
 		select {
 		case <-pairSuccessChan:
-			err := s.WhatsAppRepository.SaveDevicePG(context.Background(), deviceStore.ID.ADString(), deviceStore.ID.User)
+			JID := fmt.Sprintf("%s:%d@%s", deviceStore.ID.User, deviceStore.ID.Device, deviceStore.ID.Server)
+			err := s.WhatsAppRepository.UpdateOrCreatePG(context.Background(), JID, deviceStore.ID.User)
 			if err != nil {
 				log.Println(err)
 			}
@@ -84,7 +87,12 @@ func (s WhatsAppService) Send(ctx context.Context, req SendRequest) (res SendRes
 	}
 	defer client.Close()
 
-	client, err = client.Publish(os.Getenv("RABBITMQ_QUEUE"), req.Message)
+	jsonReq, err := json.Marshal(req)
+	if err != nil {
+		log.Fatalf("Failed to marshal request: %v", err)
+	}
+
+	_, err = client.Publish(os.Getenv("RABBITMQ_QUEUE"), string(jsonReq))
 	if err != nil {
 		return SendResponse{
 			Sent: false,

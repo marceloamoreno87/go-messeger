@@ -26,18 +26,21 @@ func (r WhatsAppRepository) FindDeviceWM(ctx context.Context, JID types.JID) (de
 	return r.WhatsMeowDB.GetDevice(JID)
 }
 
-func (r WhatsAppRepository) SaveDevicePG(ctx context.Context, JID string, phoneNumber string) error {
+func (r WhatsAppRepository) UpdateOrCreatePG(ctx context.Context, JID string, phoneNumber string) error {
+
 	query := `
-	INSERT INTO devices (jid, phone_number)
-	VALUES ($1, $2)
-	`
+			INSERT INTO devices (jid, phone_number)
+			VALUES ($1, $2)
+			ON CONFLICT (phone_number) DO UPDATE
+			SET jid = EXCLUDED.jid, updated_at = CURRENT_TIMESTAMP
+			`
+
 	row := r.DB.QueryRowContext(ctx, query, JID, phoneNumber)
 	if row.Err() != nil {
 		return row.Err()
 	}
 
 	return nil
-
 }
 
 func (r WhatsAppRepository) DeleteDevicePG(ctx context.Context, phone string) error {

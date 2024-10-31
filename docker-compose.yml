@@ -1,0 +1,61 @@
+services: 
+  api:
+    build: 
+      context: .
+      target: development
+      args:
+          SERVICE_PATH: ./api
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./:/app
+    depends_on:
+      - rabbitmq
+      - redis
+      - db
+    env_file:
+      - ./api/.env
+      
+
+  db:
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+  
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: rabbitmq
+      RABBITMQ_DEFAULT_PASS: rabbitmq
+  
+  consumer:
+    build: 
+      context: .
+      target: development
+      args:
+          SERVICE_PATH: ./consumer
+    volumes:
+      - ./:/app
+    depends_on:
+      - rabbitmq
+      - redis
+      - db
+    env_file:
+      - ./consumer/.env

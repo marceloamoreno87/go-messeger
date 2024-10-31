@@ -9,15 +9,9 @@ type ValidateResponse struct {
 }
 
 type SendRequest struct {
-	JID          string `json:"jid"`
-	To           string `json:"to"`
-	Title        string `json:"title"`
-	Service      string `json:"service"`
-	When         string `json:"when"`
-	Duration     string `json:"duration"`
-	Professional string `json:"professional"`
-	Code         string `json:"code"`
-	Footer       string `json:"footer"`
+	JID     string `json:"jid"`
+	To      string `json:"to"`
+	Message string `json:"message"`
 }
 
 type SendResponse struct {

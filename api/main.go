@@ -14,43 +14,35 @@ import (
 
 func main() {
 
-	whatsMeowDB := core.WhatsMeowDB{
-		DSN: os.Getenv("POSTGRES_DSN"),
-	}
-	connWhatsMeow, err := whatsMeowDB.DbSqlConnect()
+	
+	app := core.NewApplication()
+
+	postgresConn, err := app.Postgres.Connect()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Could not connect to postgres: %v", err)
 	}
+	app.Postgres.RunMigrate()
 
-	database := core.Postgres{
-		DSN: os.Getenv("POSTGRES_DSN"),
-	}
-
-	conn, err := database.InitDB()
+	whatsMeowConn, err := app.WhatsMeowDB.Connect()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Could not connect to whatsmeow: %v", err)
 	}
 
-	err = database.RunMigrate()
+	rabbitMqConn, err := app.RabbitMQ.Connect()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Could not connect to rabbitmq: %v", err)
 	}
-
-	rabbitConn := core.RabbitMQClient{
-		Config: &core.Config{
-			URL: os.Getenv("RABBITMQ_DSN"),
-		},
-	}
+	defer rabbitMqConn.Close()
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
 	handler := domain.WhatsAppHandler{
 		WhatsAppService: domain.WhatsAppService{
-			RabbitMQService: rabbitConn,
+			RabbitMQService: rabbitMqConn,
 			WhatsAppRepository: domain.WhatsAppRepository{
-				WhatsMeowDB: connWhatsMeow,
-				DB:          conn,
+				WhatsMeowDB: whatsMeowConn,
+				DB:          postgresConn,
 			},
 		},
 	}

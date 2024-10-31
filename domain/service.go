@@ -16,7 +16,7 @@ import (
 
 type WhatsAppService struct {
 	WhatsAppRepository WhatsAppRepository
-	RabbitMQService    core.RabbitMQClient
+	RabbitMQService    *core.RabbitMQClient
 }
 
 func (s WhatsAppService) Connect(ctx context.Context) ([]byte, error) {

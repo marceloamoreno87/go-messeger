@@ -11,7 +11,7 @@ type WhatsMeowDB struct {
 	DSN string
 }
 
-func (wm *WhatsMeowDB) DbSqlConnect() (postgresDb *sqlstore.Container, err error) {
+func (wm *WhatsMeowDB) Connect() (postgresDb *sqlstore.Container, err error) {
 
 	db, err := sql.Open("postgres", wm.DSN)
 	if err != nil {

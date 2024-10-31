@@ -14,7 +14,7 @@ type Postgres struct {
 	DSN string
 }
 
-func (d Postgres) InitDB() (db *sql.DB, err error) {
+func (d Postgres) Connect() (db *sql.DB, err error) {
 	db, err = sql.Open("postgres", d.DSN)
 	if err != nil {
 		return

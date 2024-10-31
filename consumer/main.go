@@ -12,58 +12,40 @@ import (
 
 func main() {
 
-	whatsMeowDB := core.WhatsMeowDB{
-		DSN: os.Getenv("POSTGRES_DSN"),
-	}
-	connWhatsMeow, err := whatsMeowDB.DbSqlConnect()
+	app := core.NewApplication()
+
+	postgresConn, err := app.Postgres.Connect()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Could not connect to postgres: %v", err)
 	}
 
-	database := core.Postgres{
-		DSN: os.Getenv("POSTGRES_DSN"),
-	}
-
-	conn, err := database.InitDB()
+	whatsMeowConn, err := app.WhatsMeowDB.Connect()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Could not connect to whatsmeow: %v", err)
 	}
 
-	database.RunMigrate()
+	redisConn, err := app.Redis.Connect()
+	if err != nil {
+		log.Fatalf("Could not connect to redis: %v", err)
+	}
+	defer redisConn.Close()
 
-	client := &core.RabbitMQClient{
-		Config: &core.Config{
-			URL: os.Getenv("RABBITMQ_DSN"),
-		},
+	rabbitMqConn, err := app.RabbitMQ.Connect()
+	if err != nil {
+		log.Fatalf("Could not connect to rabbitmq: %v", err)
+	}
+	defer rabbitMqConn.Close()
+
+	msgs, err := rabbitMqConn.Consume(os.Getenv("RABBITMQ_QUEUE"))
+	if err != nil {
+		log.Fatalf("Could not consume messages: %v", err)
 	}
 
 	sendMessage := domain.SendMessage{
 		WhatsAppRepository: domain.WhatsAppRepository{
-			WhatsMeowDB: connWhatsMeow,
-			DB:          conn,
+			WhatsMeowDB: whatsMeowConn,
+			DB:          postgresConn,
 		},
-	}
-
-	redisClient := &core.RedisClient{
-		DSN: os.Getenv("REDIS_DSN"),
-	}
-
-	redisClient, err = redisClient.Connect()
-	if err != nil {
-		log.Fatalf("Could not connect to Redis: %v", err)
-	}
-
-	defer redisClient.Close()
-
-	client, err = client.Connect()
-	if err != nil {
-		log.Fatalf("Could not connect to RabbitMQ: %v", err)
-	}
-	defer client.Close()
-
-	msgs, err := client.Consume(os.Getenv("RABBITMQ_QUEUE"))
-	if err != nil {
-		log.Fatalf("Could not consume messages: %v", err)
 	}
 
 	go func() {
@@ -76,7 +58,7 @@ func main() {
 				continue
 			}
 
-			cache, err := redisClient.Get(incomingMsg.JID)
+			cache, err := app.Redis.Get(incomingMsg.JID)
 			if err != nil && err.Error() != "chave não encontrada" {
 				log.Printf("Error getting cache: %v", err)
 				msg.Nack(false, true)
@@ -91,11 +73,11 @@ func main() {
 				continue
 			}
 
-			redisClient.Set(incomingMsg.JID, "true", 0)
+			app.Redis.Set(incomingMsg.JID, "true", 0)
 
 			err = sendMessage.Send(&incomingMsg)
 			if err != nil {
-				redisClient.Del(incomingMsg.JID)
+				app.Redis.Del(incomingMsg.JID)
 				log.Printf("Error sending message: %v", err)
 				msg.Nack(false, true)
 				continue
@@ -103,7 +85,7 @@ func main() {
 
 			msg.Ack(false)
 
-			redisClient.Del(incomingMsg.JID)
+			app.Redis.Del(incomingMsg.JID)
 
 			fmt.Println("incomingMsg", incomingMsg)
 

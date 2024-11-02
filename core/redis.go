@@ -50,7 +50,6 @@ func (r *RedisClient) Connect() (*RedisClient, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrRedisConnection, err)
 	}
-	fmt.Println("Conectado ao Redis com sucesso")
 	return r, nil
 }
 

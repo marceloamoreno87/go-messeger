@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"errors"
 
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
@@ -17,9 +18,9 @@ Campos:
 - Message: Conteúdo da mensagem a ser enviada.
 */
 type Message struct {
-	JID     string `json:"jid"`
-	To      string `json:"to"`
-	Message string `json:"message"`
+	SessionId string `json:"sessionId"`
+	To        string `json:"to"`
+	Message   string `json:"message"`
 }
 
 /*
@@ -47,16 +48,12 @@ Retorna:
 - Um erro, se houver.
 */
 func (s *SendMessage) Send(message *Message) (err error) {
-	/*
-	   Converte o identificador do remetente (JID) para o formato types.JID.
-	*/
-	JID := NumberToJID(message.JID)
 
 	/*
 	   Encontra o dispositivo WhatsApp associado ao JID.
 	   Se o dispositivo não for encontrado, retorna um erro.
 	*/
-	deviceStore, err := s.WhatsAppRepository.FindDeviceWM(context.Background(), JID)
+	deviceStore, err := s.WhatsAppRepository.FindDeviceWM(context.Background(), message.SessionId)
 	if err != nil {
 		return err
 	}
@@ -69,6 +66,12 @@ func (s *SendMessage) Send(message *Message) (err error) {
 	client := whatsmeow.NewClient(deviceStore, nil)
 	if err = client.Connect(); err != nil {
 		return err
+	}
+
+	defer client.Disconnect()
+
+	if !client.IsConnected() {
+		return errors.New("client is not connected")
 	}
 
 	/*

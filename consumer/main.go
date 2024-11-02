@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"gonext/core"
 	"gonext/domain"
@@ -83,6 +84,8 @@ func main() {
 	go func() {
 		for msg := range msgs {
 
+			fmt.Println("START", string(msg.Body))
+
 			/*
 			   Deserializa a mensagem recebida do formato JSON para a estrutura Message.
 			   Se a deserialização falhar, a mensagem é ignorada e o erro é registrado.
@@ -98,19 +101,17 @@ func main() {
 			   Verifica se a mensagem já foi processada anteriormente consultando o cache Redis.
 			   Se houver um erro ao consultar o cache, a mensagem é reenviada para a fila.
 			*/
-			cache, err := app.Redis.Get(incomingMsg.JID)
-			if err != nil && err.Error() != "chave não encontrada" {
+			cache, err := app.Redis.Get(incomingMsg.SessionId)
+			if err != nil && !errors.Is(err, core.ErrRedisKeyNotFound) {
 				log.Printf("Error getting cache: %v", err)
 				msg.Nack(false, true)
 				continue
 			}
 
-			fmt.Println("cache", cache)
-
 			/*
-			   Se a mensagem já foi processada (presente no cache), ela é ignorada e reenviada para a fila.
+			   Se o JID está em uso por outro dispositivo, a mensagem é volta pra fila.
 			*/
-			if cache != "" {
+			if cache == "true" {
 				log.Printf("Message already sent: %v", incomingMsg)
 				msg.Nack(false, true)
 				continue
@@ -119,7 +120,14 @@ func main() {
 			/*
 			   Armazena a mensagem no cache Redis para evitar processamento duplicado.
 			*/
-			app.Redis.Set(incomingMsg.JID, "true", 0)
+			app.Redis.Set(incomingMsg.SessionId, "true", 0)
+
+			_, err = app.Redis.Get(incomingMsg.SessionId)
+			if err != nil && !errors.Is(err, core.ErrRedisKeyNotFound) {
+				log.Printf("Error getting cache: %v", err)
+				msg.Nack(false, true)
+				continue
+			}
 
 			/*
 			   Envia a mensagem usando o serviço SendMessage.
@@ -127,7 +135,7 @@ func main() {
 			*/
 			err = sendMessage.Send(&incomingMsg)
 			if err != nil {
-				app.Redis.Del(incomingMsg.JID)
+				app.Redis.Del(incomingMsg.SessionId)
 				log.Printf("Error sending message: %v", err)
 				msg.Nack(false, true)
 				continue
@@ -141,9 +149,9 @@ func main() {
 			/*
 			   Remove a mensagem do cache após o processamento bem-sucedido.
 			*/
-			app.Redis.Del(incomingMsg.JID)
+			app.Redis.Del(incomingMsg.SessionId)
 
-			fmt.Println("incomingMsg", incomingMsg)
+			fmt.Println("FINISH", incomingMsg)
 
 		}
 	}()

@@ -1,5 +1,5 @@
 /api/.env
-/api/build
+/api/build/main
 
 /consumer/.env
-/consumer/build
+/consumer/build/main

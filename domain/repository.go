@@ -6,7 +6,6 @@ import (
 
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
-	"go.mau.fi/whatsmeow/types"
 )
 
 /*
@@ -49,8 +48,31 @@ Parâmetros:
 Retorna:
 - Um ponteiro para a estrutura store.Device e um erro, se houver.
 */
-func (r WhatsAppRepository) FindDeviceWM(ctx context.Context, JID types.JID) (device *store.Device, err error) {
-	return r.WhatsMeowDB.GetDevice(JID)
+func (r WhatsAppRepository) FindDeviceWM(ctx context.Context, sessionID string) (device *store.Device, err error) {
+
+	query := `
+		SELECT 
+		jid
+		FROM whatsmeow_device 
+		WHERE registration_id = $1
+		`
+	row := r.DB.QueryRowContext(ctx, query, sessionID)
+	if row.Err() != nil {
+		return nil, row.Err()
+	}
+
+	var jid string
+	err = row.Scan(&jid)
+	if err != nil {
+		return nil, err
+	}
+
+	device, err = r.WhatsMeowDB.GetDevice(NumberToJID(jid))
+	if err != nil {
+		return nil, err
+	}
+
+	return device, nil
 }
 
 /*

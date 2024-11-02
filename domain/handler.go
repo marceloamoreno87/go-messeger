@@ -19,16 +19,15 @@ Gera um código QR para autenticação e o retorna como uma imagem PNG.
 Em caso de erro, retorna um status HTTP 500.
 */
 func (h WhatsAppHandler) Connect(w http.ResponseWriter, r *http.Request) {
-	data, err := h.WhatsAppService.Connect(r.Context())
-	if err != nil && data == nil {
+	res, err := h.WhatsAppService.Connect(r.Context())
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "image/png")
-	w.Header().Set("Content-Disposition", "attachment; filename=qr.png")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(data)
+	_ = json.NewEncoder(w).Encode(res)
 }
 
 /*

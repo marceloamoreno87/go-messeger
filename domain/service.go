@@ -2,11 +2,14 @@ package domain
 
 import (
 	"context"
+	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"gonext/core"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/skip2/go-qrcode"
 	"go.mau.fi/whatsmeow"
@@ -32,7 +35,7 @@ Parâmetros:
 Retorna:
 - Um slice de bytes contendo a imagem PNG do código QR e um erro, se houver.
 */
-func (s WhatsAppService) Connect(ctx context.Context) ([]byte, error) {
+func (s WhatsAppService) Connect(ctx context.Context) (res ConnectResponse, err error) {
 
 	deviceStore := s.WhatsAppRepository.CreateDeviceWM(context.Background())
 	client := whatsmeow.NewClient(deviceStore, nil)
@@ -47,33 +50,42 @@ func (s WhatsAppService) Connect(ctx context.Context) ([]byte, error) {
 	go func() {
 		select {
 		case <-pairSuccessChan:
+
+			//request para atualizar o agenda que o aparelho foi configurado com sucesso
+
 			JID := fmt.Sprintf("%s:%d@%s", deviceStore.ID.User, deviceStore.ID.Device, deviceStore.ID.Server)
 			err := s.WhatsAppRepository.UpdateOrCreatePG(context.Background(), JID, deviceStore.ID.User)
 			if err != nil {
 				log.Println(err)
 			}
+
 		}
 	}()
 
 	store.SetOSInfo("Windows", [3]uint32{1, 2, 3})
 
 	qrChan, _ := client.GetQRChannel(context.Background())
-	err := client.Connect()
+	err = client.Connect()
 	if err != nil {
-		return nil, err
+		return ConnectResponse{}, err
 	}
 	qr := []byte{}
 	for evt := range qrChan {
 		if evt.Event == "code" {
 			qr, err = qrcode.Encode(evt.Code, qrcode.Medium, 256)
 			if err != nil {
-				return nil, err
+				return ConnectResponse{}, err
 			}
 			break
 		}
 	}
 
-	return qr, nil
+	qrBase64 := base64.StdEncoding.EncodeToString(qr)
+	qrToStringBase64 := fmt.Sprintf("data:image/png;base64,%s", qrBase64)
+	return ConnectResponse{
+		AuthCode:  qrToStringBase64,
+		SessionID: strconv.FormatUint(uint64(deviceStore.RegistrationID), 10),
+	}, nil
 }
 
 /*
@@ -86,12 +98,18 @@ Retorna:
 - Uma estrutura ValidateResponse indicando se o número de telefone está ativo e um erro, se houver.
 */
 func (s WhatsAppService) Validate(ctx context.Context, req ValidateRequest) (res ValidateResponse, err error) {
-	JID := NumberToJID(req.JID)
-	device, err := s.WhatsAppRepository.FindDeviceWM(ctx, JID)
-	if err != nil || device == nil {
+	sessionId := req.SessionId
+	_, err = s.WhatsAppRepository.FindDeviceWM(ctx, sessionId)
+	if err != nil && err != sql.ErrNoRows {
 		return ValidateResponse{
 			Active: false,
 		}, err
+	}
+
+	if err == sql.ErrNoRows {
+		return ValidateResponse{
+			Active: false,
+		}, nil
 	}
 
 	return ValidateResponse{

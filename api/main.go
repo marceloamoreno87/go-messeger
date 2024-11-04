@@ -83,6 +83,11 @@ func main() {
 	r.Get("/connect", handler.Connect)
 	r.Post("/validate", handler.Validate)
 	r.Post("/send", handler.Send)
+	r.Post("/account", handler.CreateAccount)
+	r.Post("/session", handler.CreateSession)
+	r.Get("/session/{id}", handler.GetSessionByID)
+	r.Delete("/session/{id}", handler.DeleteSession)
+	r.Delete("/account/{id}", handler.DeleteAccount)
 
 	/*
 	   Inicia o servidor HTTP na porta especificada.

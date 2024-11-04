@@ -49,3 +49,41 @@ type ConnectResponse struct {
 	AuthCode  string `json:"authCode"`
 	SessionID string `json:"sessionId"`
 }
+
+type CreateAccountRequest struct {
+	Name       string `json:"name"`
+	Origin     string `json:"origin"`
+	ExternalId string `json:"externalId"`
+}
+
+type CreateAccountResponse struct {
+	ID string `json:"id"`
+}
+
+type CreateSessionRequest struct {
+	AccountID string `json:"accountId"`
+}
+
+type CreateSessionResponse struct {
+	AuthCode  string `json:"authCode"`
+	SessionID string `json:"sessionId"`
+}
+
+type SessionInfo struct {
+	Name            *string `json:"name,omitempty"`
+	PhoneID         *string `json:"phoneId,omitempty"`
+	PhoneSerialized *string `json:"phoneSerialized,omitempty"`
+	Platform        *string `json:"platform,omitempty"`
+}
+
+type GetSessionByIDResponse struct {
+	ID            string       `json:"id"`
+	AccountID     string       `json:"accountId"`
+	SessionInfo   *SessionInfo `json:"sessionInfo"`
+	Status        string       `json:"status"`
+	AuthCode      string       `json:"authCode"`
+	ReadyAt       *string      `json:"readyAt,omitempty"`
+	FailureReason *string      `json:"failureReason,omitempty"`
+	CreatedAt     string       `json:"createdAt"`
+	UpdatedAt     string       `json:"updatedAt"`
+}

@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
@@ -73,6 +74,8 @@ func (s *SendMessage) Send(message *Message) (err error) {
 	if !client.IsConnected() {
 		return errors.New("client is not connected")
 	}
+
+	message.To = strings.Replace(message.To, "+", "", -1)
 
 	/*
 	   Constrói o identificador do destinatário (TO) no formato types.JID.

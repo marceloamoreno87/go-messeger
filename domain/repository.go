@@ -3,6 +3,9 @@ package domain
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+
+	"github.com/segmentio/ksuid"
 
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
@@ -85,6 +88,7 @@ Retorna:
 - Um erro, se houver.
 */
 func (r WhatsAppRepository) UpdateOrCreatePG(ctx context.Context, JID string, phoneNumber string) error {
+
 	query := `
         INSERT INTO devices (jid, phone_number)
         VALUES ($1, $2)
@@ -116,6 +120,151 @@ func (r WhatsAppRepository) DeleteDevicePG(ctx context.Context, phone string) er
 	row := r.DB.QueryRowContext(ctx, query, phone)
 	if row.Err() != nil {
 		return row.Err()
+	}
+
+	return nil
+}
+
+/*
+Método CreateAccount cria uma nova conta no banco de dados Postgres.
+Parâmetros:
+- ctx: Contexto para controle de cancelamento e prazos.
+- name: Nome do workspace.
+- origin: Origem da conta.
+- externalId: Identificador externo da conta.
+Retorna:
+- O ID da conta criada e um erro, se houver.
+*/
+func (r WhatsAppRepository) CreateAccount(ctx context.Context, name string, origin string, externalId string) (string, error) {
+
+	id := ksuid.New().String()
+
+	query := `
+        INSERT INTO accounts (id, name, origin, "externalId", "updatedAt", "createdAt")
+        VALUES ($1, $2, $3, $4, NOW(), NOW())
+        RETURNING id
+    `
+	row := r.DB.QueryRowContext(ctx, query, id, name, origin, externalId)
+	if row.Err() != nil {
+		return "", row.Err()
+	}
+
+	err := row.Scan(&id)
+	if err != nil {
+		return "", err
+	}
+
+	return id, nil
+}
+
+func (r WhatsAppRepository) CreateSession(ctx context.Context, sessionId string, accountID string, qr string) (string, string, error) {
+
+	var response struct {
+		ID       string `json:"id"`
+		AuthCode string `json:"authCode"`
+	}
+
+	query := `
+	INSERT INTO sessions (id, "accountId", "authCode", status, "createdAt", "updatedAt")
+	VALUES ($1, $2, $3, $4, NOW(), NOW())
+	RETURNING id, "authCode"
+	`
+
+	row := r.DB.QueryRowContext(ctx, query, sessionId, accountID, qr, "PENDING")
+	if row.Err() != nil {
+		return "", "", row.Err()
+	}
+
+	err := row.Scan(&response.ID, &response.AuthCode)
+	if err != nil {
+		return "", "", err
+	}
+
+	return response.ID, response.AuthCode, nil
+
+}
+
+func (r WhatsAppRepository) UpdateSession(ctx context.Context, sessionID string, status string, jid string) (err error) {
+
+	jsonJid := map[string]interface{}{
+		"phoneId": jid,
+	}
+
+	sessionInfoJSON, err := json.Marshal(jsonJid)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		UPDATE sessions
+		SET status = $1, "sessionInfo" = $2, "readyAt" = $3, "updatedAt" = NOW()
+		WHERE id = $4
+	`
+	row := r.DB.QueryRowContext(ctx, query, status, sessionInfoJSON, "now()", sessionID)
+	if row.Err() != nil {
+		return row.Err()
+	}
+
+	return nil
+}
+
+func (r WhatsAppRepository) GetSessionByID(ctx context.Context, id string) (res GetSessionByIDResponse, err error) {
+	query := `
+        SELECT 
+            id,
+            "accountId",
+            "sessionInfo",
+            status,
+            "authCode",
+            "readyAt",
+            "failureReason",
+            "createdAt",
+            "updatedAt"
+        FROM sessions
+        WHERE id = $1
+    `
+	row := r.DB.QueryRowContext(ctx, query, id)
+	if row.Err() != nil {
+		return GetSessionByIDResponse{}, row.Err()
+	}
+
+	var sessionInfoJSON []byte
+	res = GetSessionByIDResponse{}
+	err = row.Scan(&res.ID, &res.AccountID, &sessionInfoJSON, &res.Status, &res.AuthCode, &res.ReadyAt, &res.FailureReason, &res.CreatedAt, &res.UpdatedAt)
+	if err != nil {
+		return GetSessionByIDResponse{}, err
+	}
+
+	err = json.Unmarshal(sessionInfoJSON, &res.SessionInfo)
+	if err != nil {
+		return GetSessionByIDResponse{}, err
+	}
+
+	return res, nil
+}
+
+func (r WhatsAppRepository) DeleteSession(ctx context.Context, id string) error {
+	query := `
+		DELETE FROM sessions
+		WHERE id = $1
+	`
+	_, err := r.DB.ExecContext(ctx, query, id)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r WhatsAppRepository) DeleteAccount(ctx context.Context, id string) error {
+	query := `
+        DELETE FROM accounts
+        WHERE id = $1
+    `
+
+	_, err := r.DB.ExecContext(ctx, query, id)
+	if err != nil {
+		return err
 	}
 
 	return nil

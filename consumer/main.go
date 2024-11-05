@@ -135,6 +135,12 @@ func main() {
 			*/
 			err = sendMessage.Send(&incomingMsg)
 			if err != nil {
+				if err.Error() == "device_not_found" {
+					log.Printf("Device not found: %v", incomingMsg)
+					app.Redis.Del(incomingMsg.SessionId)
+					msg.Ack(false)
+					continue
+				}
 				app.Redis.Del(incomingMsg.SessionId)
 				log.Printf("Error sending message: %v", err)
 				msg.Nack(false, true)

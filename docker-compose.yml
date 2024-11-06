@@ -1,5 +1,6 @@
 services: 
   api:
+    container_name: api
     build: 
       context: .
       target: development
@@ -20,6 +21,7 @@ services:
       - ./api/.env
 
   db:
+    container_name: db
     image: postgres:latest
     ports:
       - "5436:5432"
@@ -34,6 +36,7 @@ services:
       retries: 5
 
   redis:
+    container_name: redis
     image: redis:latest
     ports:
       - "6376:6379"
@@ -44,6 +47,7 @@ services:
       retries: 5
   
   rabbitmq:
+    container_name: rabbitmq
     image: rabbitmq:3-management
     ports:
       - "5676:5672"
@@ -57,7 +61,8 @@ services:
       timeout: 5s
       retries: 5
   
-  consumer1:
+  consumer:
+    container_name: consumer
     build: 
       context: .
       target: development

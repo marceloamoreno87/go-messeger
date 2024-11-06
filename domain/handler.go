@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-
-	"github.com/go-chi/chi/v5"
 )
 
 /*
@@ -83,96 +81,4 @@ func (h WhatsAppHandler) Send(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(res)
-}
-
-func (h WhatsAppHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
-
-	req := CreateAccountRequest{}
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	res, err := h.WhatsAppService.CreateAccount(context.Background(), req)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(res)
-}
-
-func (h WhatsAppHandler) CreateSession(w http.ResponseWriter, r *http.Request) {
-
-	req := CreateSessionRequest{}
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	res, err := h.WhatsAppService.CreateSession(context.Background(), req)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(res)
-}
-
-func (h WhatsAppHandler) GetSessionByID(w http.ResponseWriter, r *http.Request) {
-
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		http.Error(w, "missing id", http.StatusBadRequest)
-		return
-	}
-
-	res, err := h.WhatsAppService.GetSessionByID(context.Background(), id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(res)
-}
-
-func (h WhatsAppHandler) DeleteSession(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-
-	if id == "" {
-		http.Error(w, "missing id", http.StatusBadRequest)
-		return
-	}
-
-	err := h.WhatsAppService.DeleteSession(context.Background(), id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-}
-
-func (h WhatsAppHandler) DeleteAccount(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		http.Error(w, "missing id", http.StatusBadRequest)
-		return
-	}
-
-	err := h.WhatsAppService.DeleteAccount(context.Background(), id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
 }

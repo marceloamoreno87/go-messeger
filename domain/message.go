@@ -56,15 +56,6 @@ func (s *SendMessage) Send(message *Message) (err error) {
 	*/
 	deviceStore, err := s.WhatsAppRepository.FindDeviceWM(context.Background(), message.SessionId)
 	if err != nil {
-
-		session, err := s.WhatsAppRepository.GetSessionByID(context.Background(), message.SessionId)
-		if err != nil {
-			return errors.New("session_not_found")
-		}
-
-		s.WhatsAppRepository.DeleteSession(context.Background(), session.ID)
-		s.WhatsAppRepository.DeleteAccount(context.Background(), session.AccountID)
-
 		return errors.New("device_not_found")
 	}
 

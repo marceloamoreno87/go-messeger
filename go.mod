@@ -1,4 +1,4 @@
-module gonext
+module gozap
 
 go 1.22.5
 

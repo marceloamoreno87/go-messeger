@@ -1,0 +1,54 @@
+# Etapa de build: usa a imagem oficial do Golang baseada em Alpine Linux
+FROM golang:alpine AS build
+
+# Define um argumento de build chamado SERVICE_PATH
+ARG SERVICE_PATH
+
+# Define uma variável de ambiente para armazenar o caminho do serviço
+ENV SERVICE_PATH_ENV=${SERVICE_PATH}
+
+# Define o diretório de trabalho dentro do contêiner
+WORKDIR /app
+
+# Copia os arquivos go.mod e go.sum do serviço para o diretório de trabalho
+COPY ./go.mod ./go.sum ./
+
+# Baixa as dependências do Go, utilizando cache para otimizar o processo
+RUN --mount=type=cache,target=/go/shared/mod \
+  --mount=type=cache,target=/root/.cache/go-build \
+  go mod download
+
+# Copia todos os arquivos do contexto de build para o contêiner
+COPY . .
+
+# Compila o binário Go com otimizações para produção
+RUN go build -x -tags netgo -o /main ./$SERVICE_PATH_ENV/cmd/main.go
+
+# Etapa de produção: usa a imagem scratch para um contêiner mínimo
+FROM scratch
+
+# Define um argumento de build chamado SERVICE_PATH
+ARG SERVICE_PATH
+
+ENV SERVICE_PATH_ENV=${SERVICE_PATH}
+
+# Define o diretório de trabalho dentro do contêiner
+WORKDIR /
+
+# Copia o arquivo de senhas do sistema do contêiner de build para o contêiner de produção
+COPY --from=build /etc/passwd /etc/passwd
+
+# Copia o binário compilado para o contêiner de produção
+COPY --from=build /main .
+
+# Copia as migrações para o contêiner de produção
+COPY --from=build /app/$SERVICE_PATH_ENV/migrations /migrations
+
+# Copia os certificados SSL para o contêiner de produção
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+# Define o usuário que executará o contêiner
+USER 1001
+
+# Define o comando padrão para iniciar o contêiner em produção
+CMD ["/main"]

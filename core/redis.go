@@ -20,7 +20,9 @@ var (
 	ErrRedisDeleteKey   = errors.New("redis.delete_key_failed: erro ao deletar chave no Redis")
 	ErrRedisGetValue    = errors.New("redis.get_value_failed: erro ao obter valor do Redis")
 	ErrRedisKeyNotFound = errors.New("redis.key_not_found: chave não encontrada")
+	ErrRedisLockFailed  = errors.New("redis.lock_failed: erro ao adquirir o bloqueio no Redis")
 )
+
 
 /*
 Estrutura para implementar o cliente Redis e manter a conexão e configuração.
@@ -101,4 +103,29 @@ Retorna um erro, se houver.
 */
 func (r *RedisClient) Close() error {
 	return r.client.Close()
+}
+
+/*
+Implementação do método AcquireLock para adquirir um bloqueio.
+Tenta definir um valor no Redis com uma chave específica e um tempo de expiração.
+Retorna um erro, se houver.
+*/
+func (r *RedisClient) AcquireLock(key string, expiration time.Duration) error {
+	set, err := r.client.SetNX(r.ctx, key, "true", expiration).Result()
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrRedisLockFailed, err)
+	}
+	if !set {
+		return ErrRedisLockFailed
+	}
+	return nil
+}
+
+/*
+Implementação do método ReleaseLock para liberar um bloqueio.
+Remove um valor do Redis com uma chave específica.
+Retorna um erro, se houver.
+*/
+func (r *RedisClient) ReleaseLock(key string) error {
+	return r.Del(key)
 }

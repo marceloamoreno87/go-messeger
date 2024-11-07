@@ -1,6 +1,8 @@
 package core
 
-import "os"
+import (
+	"os"
+)
 
 /*
 Estrutura Application que contém todas as dependências necessárias para a aplicação.
@@ -9,16 +11,20 @@ Inclui conexões para WhatsMeowDB, Postgres, RabbitMQ e Redis.
 type Application struct {
 	WhatsMeowDB WhatsMeowDB
 	Postgres    Postgres
-	RabbitMQ    RabbitMQClient
+	Messenger   MessengerInterface
 	Redis       RedisClient
 }
 
 /*
-	Função NewApplication cria uma nova instância da estrutura Application.
-	Inicializa todas as dependências necessárias usando variáveis de ambiente.
-	Retorna um ponteiro para a estrutura Application.
+Função NewApplication cria uma nova instância da estrutura Application.
+Inicializa todas as dependências necessárias usando variáveis de ambiente.
+Retorna um ponteiro para a estrutura Application.
 */
 func NewApplication() *Application {
+
+	driverMessenger := ParseDriverMessage(os.Getenv("MESSENGER_DRIVER"))
+	messenger := NewMessenger(driverMessenger)
+
 	return &Application{
 		/*
 		   Inicializa a conexão com o banco de dados WhatsMeowDB.
@@ -38,11 +44,7 @@ func NewApplication() *Application {
 		   Inicializa a conexão com o RabbitMQ.
 		   A URL de conexão é obtida da variável de ambiente RABBITMQ_DSN.
 		*/
-		RabbitMQ: RabbitMQClient{
-			Config: &Config{
-				URL: os.Getenv("RABBITMQ_DSN"),
-			},
-		},
+		Messenger: messenger,
 		/*
 		   Inicializa a conexão com o Redis.
 		   A string de conexão é obtida da variável de ambiente REDIS_DSN.

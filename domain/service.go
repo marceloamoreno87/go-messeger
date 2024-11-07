@@ -23,7 +23,7 @@ Esta estrutura é responsável por fornecer funcionalidades relacionadas ao What
 */
 type WhatsAppService struct {
 	WhatsAppRepository WhatsAppRepository
-	RabbitMQService    *core.RabbitMQClient
+	Messenger          core.MessengerInterface
 }
 
 /*
@@ -120,20 +120,20 @@ Retorna:
 - Uma estrutura SendResponse indicando se a mensagem foi enviada com sucesso e um erro, se houver.
 */
 func (s WhatsAppService) Send(ctx context.Context, req SendRequest) (res SendResponse, err error) {
-	client, err := s.RabbitMQService.Connect()
+	err = s.Messenger.Connect()
 	if err != nil {
 		return SendResponse{
 			Sent: false,
 		}, err
 	}
-	defer client.Close()
+	defer s.Messenger.Close()
 
 	jsonReq, err := json.Marshal(req)
 	if err != nil {
 		log.Fatalf("Failed to marshal request: %v", err)
 	}
 
-	_, err = client.Publish(os.Getenv("RABBITMQ_QUEUE"), string(jsonReq))
+	err = s.Messenger.Publish(os.Getenv("QUEUE_MESSAGE"), jsonReq)
 	if err != nil {
 		return SendResponse{
 			Sent: false,

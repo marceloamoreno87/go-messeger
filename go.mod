@@ -7,8 +7,8 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-migrate/migrate/v4 v4.18.1
 	github.com/lib/pq v1.10.9
+	github.com/nats-io/nats.go v1.37.0
 	github.com/rs/zerolog v1.33.0
-	github.com/segmentio/ksuid v1.0.4
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/streadway/amqp v1.1.0
 	go.mau.fi/whatsmeow v0.0.0-20241030164414-f98aea1881f6
@@ -23,8 +23,11 @@ require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/klauspost/compress v1.17.2 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
+	github.com/nats-io/nkeys v0.4.7 // indirect
+	github.com/nats-io/nuid v1.0.1 // indirect
 	go.mau.fi/libsignal v0.1.1 // indirect
 	go.mau.fi/util v0.8.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect

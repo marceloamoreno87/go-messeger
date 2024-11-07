@@ -61,6 +61,27 @@ services:
       timeout: 5s
       retries: 5
   
+  natsio:
+    container_name: natsio
+    image: nats:latest
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+      - "6222:6222"
+    environment:
+      - NATS_USER=nats
+      - NATS_PASSWORD=nats
+    command: [
+      "-js",
+      "--user", "nats",
+      "--pass", "nats"
+    ]
+    healthcheck:
+      test: ["CMD", "nats", "pub", "test", "test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  
   consumer:
     container_name: consumer
     build: 

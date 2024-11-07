@@ -22,47 +22,43 @@ var (
 	ErrRabbitMQCloseConnection  = errors.New("rabbitmq.close_connection_failed: failed to close connection")
 )
 
-/*
-Estrutura Config que contém a URL de conexão para o RabbitMQ.
-*/
-type Config struct {
-	URL string
+type RabbitMQMessagerInterface interface {
 }
 
 /*
-Estrutura RabbitMQClient que mantém a configuração, conexão e canal do RabbitMQ.
+Estrutura RabbitMQMessenger que mantém a configuração, conexão e canal do RabbitMQ.
 */
-type RabbitMQClient struct {
-	Config *Config
-	Conn   *amqp.Connection
-	Ch     *amqp.Channel
+type RabbitMQMessenger struct {
+	URL  string
+	Conn *amqp.Connection
+	Ch   *amqp.Channel
 }
 
 /*
 Método Connect estabelece uma conexão com o RabbitMQ e abre um canal.
-Retorna um ponteiro para o RabbitMQClient e um erro, se houver.
+Retorna um ponteiro para o RabbitMQMessenger e um erro, se houver.
 */
-func (client *RabbitMQClient) Connect() (*RabbitMQClient, error) {
-	conn, err := amqp.Dial(client.Config.URL)
+func (client *RabbitMQMessenger) Connect() error {
+	conn, err := amqp.Dial(client.URL)
 	if err != nil {
-		return client, fmt.Errorf("%w: %v", ErrRabbitMQConnectionFailed, err)
+		return fmt.Errorf("%w: %v", ErrRabbitMQConnectionFailed, err)
 	}
 	client.Conn = conn
 
 	ch, err := client.Conn.Channel()
 	if err != nil {
-		return client, fmt.Errorf("%w: %v", ErrRabbitMQChannelFailed, err)
+		return fmt.Errorf("%w: %v", ErrRabbitMQChannelFailed, err)
 	}
 	client.Ch = ch
 
-	return client, nil
+	return nil
 }
 
 /*
 Método Publish publica uma mensagem na fila especificada.
-Retorna um ponteiro para o RabbitMQClient e um erro, se houver.
+Retorna um ponteiro para o RabbitMQMessenger e um erro, se houver.
 */
-func (client *RabbitMQClient) Publish(queueName string, body string) (*RabbitMQClient, error) {
+func (client *RabbitMQMessenger) Publish(queueName string, body []byte) error {
 	q, err := client.Ch.QueueDeclare(
 		queueName,
 		true,
@@ -72,7 +68,7 @@ func (client *RabbitMQClient) Publish(queueName string, body string) (*RabbitMQC
 		nil,
 	)
 	if err != nil {
-		return client, fmt.Errorf("%w: %v", ErrRabbitMQQueueDeclare, err)
+		return fmt.Errorf("%w: %v", ErrRabbitMQQueueDeclare, err)
 	}
 
 	err = client.Ch.Publish(
@@ -86,18 +82,18 @@ func (client *RabbitMQClient) Publish(queueName string, body string) (*RabbitMQC
 		},
 	)
 	if err != nil {
-		return client, fmt.Errorf("%w: %v", ErrRabbitMQPublish, err)
+		return fmt.Errorf("%w: %v", ErrRabbitMQPublish, err)
 	}
 
 	log.Printf("Message sent: %s", body)
-	return client, nil
+	return nil
 }
 
 /*
 Método Consume consome mensagens da fila especificada.
 Retorna um canal de mensagens (<-chan amqp.Delivery) e um erro, se houver.
 */
-func (client *RabbitMQClient) Consume(queueName string) (<-chan amqp.Delivery, error) {
+func (client *RabbitMQMessenger) Consume(queueName string, handler func(Message)) error {
 	q, err := client.Ch.QueueDeclare(
 		queueName,
 		true,
@@ -107,7 +103,7 @@ func (client *RabbitMQClient) Consume(queueName string) (<-chan amqp.Delivery, e
 		nil,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrRabbitMQQueueDeclare, err)
+		return fmt.Errorf("%w: %v", ErrRabbitMQQueueDeclare, err)
 	}
 
 	msgs, err := client.Ch.Consume(
@@ -120,17 +116,32 @@ func (client *RabbitMQClient) Consume(queueName string) (<-chan amqp.Delivery, e
 		nil,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrRabbitMQConsume, err)
+		return fmt.Errorf("%w: %v", ErrRabbitMQConsume, err)
 	}
 
-	return msgs, nil
+	go func() {
+		for d := range msgs {
+			msg := Message{
+				Body: d.Body,
+				Ack: func() error {
+					return d.Ack(false)
+				},
+				Nack: func() error {
+					return d.Nack(false, true)
+				},
+			}
+			handler(msg)
+		}
+	}()
+
+	return nil
 }
 
 /*
 Método Close fecha o canal e a conexão do RabbitMQ.
 Retorna um erro se houver falha ao fechar o canal ou a conexão.
 */
-func (client *RabbitMQClient) Close() error {
+func (client *RabbitMQMessenger) Close() error {
 	var errStrings []string
 
 	if err := client.Ch.Close(); err != nil {

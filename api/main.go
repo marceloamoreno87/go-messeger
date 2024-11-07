@@ -47,11 +47,11 @@ func main() {
 	   Conecta ao RabbitMQ.
 	   Se a conexão falhar, o programa será encerrado com uma mensagem de erro.
 	*/
-	rabbitMqConn, err := app.RabbitMQ.Connect()
+	err = app.Messenger.Connect()
 	if err != nil {
 		log.Fatalf("Could not connect to rabbitmq: %v", err)
 	}
-	defer rabbitMqConn.Close()
+	defer app.Messenger.Close()
 
 	/*
 	   Cria um novo roteador usando o pacote chi.
@@ -66,7 +66,7 @@ func main() {
 	*/
 	handler := domain.WhatsAppHandler{
 		WhatsAppService: domain.WhatsAppService{
-			RabbitMQService: rabbitMqConn,
+			Messenger: app.Messenger,
 			WhatsAppRepository: domain.WhatsAppRepository{
 				WhatsMeowDB: whatsMeowConn,
 				DB:          postgresConn,
